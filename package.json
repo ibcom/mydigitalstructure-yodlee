@@ -1,0 +1,28 @@
+{
+    "name": "exampleapp",
+    "version": "0.0.0",
+    "licence": 
+    [
+        {
+            "type": "MIT", "url": "https://github.com/caolan/async/raw/master/LICENSE"
+        }
+    ],
+    "description": "node example",
+    "preferGlobal": "true",
+    "main": "app.js",
+    "bin": { "mydigitalstructure": "mydigitalstructure.js" },
+    "author": "John Smith",
+    "keywords": ["Example App"],
+    "repository" :
+    {
+        "type": "git",
+        "url": "https://github.com/example/example.git"
+    },
+    "dependencies": 
+    {
+        "node-schedule": "0.2.9",
+        "cron-parser": "0.7.0",
+        "long-timeout": "0.0.2"
+    },
+    "engines": { "node": "*" }
+}
