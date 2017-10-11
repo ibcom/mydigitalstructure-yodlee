@@ -100,9 +100,44 @@ app._util.show =
 			});
 
 			console.log(_.join(showData, ', '));
-		})	
+		});
+
+		app._util.mydigitalstructure.financials.accounts()
 	}
 }	
+
+app._util.mydigitalstructure =
+{
+	financials:
+	{
+		accounts: function (response)
+		{
+			if (_.isUndefined(response))
+			{
+				mydigitalstructure.send(
+				{
+					url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_SEARCH&advanced=1'
+				},
+				'criteria={"fields":[{"name":"title"}],"filters":[],"options":{"rows":50}}',
+				app._util.mydigitalstructure.financials.accounts);
+			}
+			else
+			{
+				if (process.env.DEBUG) {console.log('accounts:' + JSON.stringify(response))};
+			}
+		},
+
+		sources: function ()
+		{
+			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_SEARCH
+		},
+			
+		transactions: function ()
+		{
+			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_SEARCH
+		}
+	}		
+}
 
 app._util.yodlee =
 {
