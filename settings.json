@@ -1,22 +1,27 @@
 {
-	"hostname": "app-next.lab.ibcom.biz", 
-	"logon": "lab@ibcom.biz", 
-	"password": "drive31", 
-	"email": "example@email.com",
-	"testing": "true",
-	"local": "false",
-	"automations":
-	[
+	"mydigitalstructure":
+	{
+		"hostname": "app-next.lab.ibcom.biz", 
+		"logon": "lab@ibcom.biz", 
+		"password": "lab2017!", 
+		"email": "example@email.com",
+		"testing": "true",
+		"local": "false"
+	},
+	"yodlee":
+	{
+		"hostname" : "developer.api.yodlee.com",
+		"cobrand":
 		{
-			"id": "0",
-			"name": "Example",
-			"functionName": "example",
-			"schedule":
-			{
-				"dayOfWeekRange": {"start": "0", "end": "6"},
-				"hour": "02",
-				"minute": "40"
-			} 
+	      "logon": "sbCobdev.biziio",
+	      "password": "3cf8717b-d993-4580-836c-fba3203a749a",
+	      "locale": "en_US"
+		},
+		"user":
+		{
+	      "logon": "sbMemdev.biziio2",
+	      "password": "sbMemdev.biziio2#123",
+	      "locale": "en_US"
 		}
-	]
-}
+	}
+}	

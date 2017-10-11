@@ -23,6 +23,7 @@
     },
     "dependencies": {
         "cron-parser": "0.7.0",
+        "lodash": "^4.17.4",
         "long-timeout": "0.0.2",
         "mydigitalstructure": "^0.4.0",
         "node-schedule": "0.2.9"
