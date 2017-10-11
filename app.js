@@ -45,13 +45,71 @@ app.start = function ()
 	if (process.env.DEBUG) {console.log('---')};
 	if (process.env.DEBUG) {console.log('app.data.yodlee.session:' + JSON.stringify(app.data.yodlee.session))};
 
-	var options =
-	{
-		endpoint: 'accounts',
-		query: 'container=bank'
-	};
+	app.prepare.yodlee.accounts();
+}
 
-	app._util.yodlee.send(options, app._util.show.accounts)
+app.prepare =
+{
+	yodlee:
+	{
+		accounts: function (response)
+		{
+			if (_.isUndefined(response))
+			{
+				var options =
+				{
+					endpoint: 'accounts',
+					query: 'container=bank&providerAccountId=10419826'
+				};
+
+				app._util.yodlee.send(options, app.prepare.yodlee.accounts)
+			}
+			else
+			{
+				app.data.yodlee.accounts = JSON.parse(response.data).account;
+				app.prepare.financial.accounts();
+			}	
+	},
+
+	financial:
+	{
+		accounts: function (response)
+		{
+			if (_.isUndefined(response))
+			{
+				mydigitalstructure.send(
+				{
+					url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_SEARCH&advanced=1'
+				},
+				'criteria={"fields":[{"name":"title"},{"name":"bsb"},{"name":"accountnumber"},{"name":"accountname"}],"options":{"rows":50}}',
+				app.prepare.financial.accounts);
+			}
+			else
+			{
+				app.data.accounts = JSON.parse(response.data).data.rows;
+				if (process.env.DEBUG) {console.log('accounts:' + JSON.stringify(app.data.accounts))};
+				app._util.show.accounts()
+			}
+		},
+
+		sources: function ()
+		{
+			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_SEARCH
+		},
+			
+		transactions: function ()
+		{
+			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_SEARCH
+		}
+	}		
+}
+
+app.process =
+{
+	accounts: function ()
+	{
+		//XXX filter down the yodlee accounts based on what in myds
+	}
 }
 
 app._util.show = 
@@ -102,42 +160,11 @@ app._util.show =
 			console.log(_.join(showData, ', '));
 		});
 
+		app.data.yodlee = {accounts: options.data.account}
+
 		app._util.mydigitalstructure.financials.accounts()
 	}
 }	
-
-app._util.mydigitalstructure =
-{
-	financials:
-	{
-		accounts: function (response)
-		{
-			if (_.isUndefined(response))
-			{
-				mydigitalstructure.send(
-				{
-					url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_SEARCH&advanced=1'
-				},
-				'criteria={"fields":[{"name":"title"}],"filters":[],"options":{"rows":50}}',
-				app._util.mydigitalstructure.financials.accounts);
-			}
-			else
-			{
-				if (process.env.DEBUG) {console.log('accounts:' + JSON.stringify(response))};
-			}
-		},
-
-		sources: function ()
-		{
-			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_SEARCH
-		},
-			
-		transactions: function ()
-		{
-			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_SEARCH
-		}
-	}		
-}
 
 app._util.yodlee =
 {
