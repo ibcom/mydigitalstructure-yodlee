@@ -7,7 +7,9 @@ mydigitalstructure.data.session - [init] mydigitalstructure session details - st
 
 process.env.DEBUG = true;
 
-var _ = require('lodash')
+var _ = require('lodash');
+var moment = require('moment');
+
 var mydigitalstructure = require('mydigitalstructure')
 var app = {_util: {}, data: {source: {}, destination: {}}}
 
@@ -159,7 +161,10 @@ app.prepare =
 
 				if (_.size(app.data.destination.sources) != 0)
 				{
-					options.fromDate = moment(_.first(app.data.destination.sources).enddate, 'DD MMM YYYY').format('YYYY-MM-DD')
+					if (_.first(app.data.destination.sources).enddate != '')
+					{	
+						options.fromDate = moment(_.first(app.data.destination.sources).enddate, 'DD MMM YYYY').format('YYYY-MM-DD');
+					}	
 				}
 				
 				app.prepare.source.transactions(options)
@@ -220,20 +225,60 @@ app.process =
 
 			if (_.isUndefined(response))
 			{
+				//get min/max dates from app.data.source.transactions
+				app.process.data.transactionMax = _.maxBy(app.data.source.transactions, function(transaction) {return moment(transaction.transactionDate, 'YYYY-MM-DD')});
+				app.process.data.transactionMin = _.minBy(app.data.source.transactions, function(transaction) {return moment(transaction.transactionDate, 'YYYY-MM-DD')});
+
+				var data = 'bankaccount=' + app.process.data.reducedSourceAccount.destinationAccountID +
+							'&startdate=' + moment(app.process.data.transactionMin.transactionDate, 'YYYY-MM-DD').format('DD MMM YYYY') +
+							'&enddate=' + moment(app.process.data.transactionMax.transactionDate, 'YYYY-MM-DD').format('DD MMM YYYY')
+
 				if (_.size(app.data.source.transactions) != 0)
 				{
 					mydigitalstructure.send(
 					{
 						url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_MANAGE'
 					},
-					'bankaccount=' + app.process.data.reducedSourceAccount.destinationAccountID,
+					data,
 					app.process.destination.sources);
 				}	
 			}
 			else
 			{
-				//app.data.destination.sources = JSON.parse(response).data.rows;
-				if (process.env.DEBUG) {console.log('[D] destination.process.sources:' + JSON.stringify(response))};
+				app.process.data.destinationSourceID = JSON.parse(response).id;
+				if (process.env.DEBUG) {console.log('[D] destination.process.sourceID:' + app.process.data.destinationSourceID)};
+				//app.process.destination.transactions()
+			}
+		},
+
+		transactions: function (options, response)
+		{
+			//Go through transactions and add to destination
+			//app.process.data.destinationSourceID
+			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_MANAGE
+
+			if (_.isUndefined(response))
+			{
+				app.process.data.destinationTransactions = [];
+
+				var data = 'source=' + app.process.data.destinationSourceID +
+							'&amount='
+
+
+				if (_.size(app.data.source.transactions) != 0)
+				{
+					mydigitalstructure.send(
+					{
+						url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_TRANSACTION_MANAGE'
+					},
+					data,
+					app.process.destination.transactions);
+				}	
+			}
+			else
+			{
+				app.process.data.destinationTransactions.push(JSON.parse(response).id);
+				if (process.env.DEBUG) {console.log('[D] destination.process.transactionID:' + JSON.parse(response).id)};
 				//app.process.source.accounts()
 			}
 		}
