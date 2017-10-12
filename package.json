@@ -23,8 +23,9 @@
     },
     "dependencies": {
         "cron-parser": "0.7.0",
-        "lodash": "^4.17.4",
+        "lodash": "*",
         "long-timeout": "0.0.2",
+        "moment": "^2.19.1",
         "mydigitalstructure": "*",
         "node-schedule": "0.2.9"
     },

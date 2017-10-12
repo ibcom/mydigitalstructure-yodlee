@@ -9,7 +9,7 @@ process.env.DEBUG = true;
 
 var _ = require('lodash')
 var mydigitalstructure = require('mydigitalstructure')
-var app = {_util: {}, data: {}}
+var app = {_util: {}, data: {source: {}, destination: {}}}
 
 mydigitalstructure.init(main)
 
@@ -45,35 +45,69 @@ app.start = function ()
 	if (process.env.DEBUG) {console.log('---')};
 	if (process.env.DEBUG) {console.log('app.data.yodlee.session:' + JSON.stringify(app.data.yodlee.session))};
 
-	app.prepare.yodlee.accounts();
+	app.prepare.source.accounts();
 }
 
 app.prepare =
 {
-	yodlee:
+	source:
 	{
-		accounts: function (response)
+		accounts: function (options, response)
 		{
+			//'container=bank&providerAccountId=10419826'
+
 			if (_.isUndefined(response))
 			{
-				var options =
+				var sendOptions =
 				{
 					endpoint: 'accounts',
 					query: 'container=bank&providerAccountId=10419826'
 				};
 
-				app._util.yodlee.send(options, app.prepare.yodlee.accounts)
+				app._util.yodlee.send(sendOptions, app.prepare.source.accounts)
 			}
 			else
 			{
-				app.data.yodlee.accounts = JSON.parse(response.data).account;
-				app.prepare.financial.accounts();
-			}	
+				if (process.env.DEBUG) {console.log('[S] source.accounts:' + JSON.stringify(response))};
+
+				app.data.source.accounts = response.data.account;
+				app._util.show.accounts();
+				app.prepare.destination.accounts();
+			}
+		},
+
+		transactions: function (options, response)
+		{
+			//https://developer.yodlee.com/apidocs/index.php#!/transactions/getTransactions
+			//https://developer.api.yodlee.com:443/ysl/restserver/v1/transactions?accountId=10916521&fromDate=2000-01-01
+
+			if (_.isUndefined(response))
+			{
+				if (_.isUndefined(options.fromDate)) {options.fromDate = '2000-01-01'}
+
+				var sendOptions =
+				{
+					endpoint: 'transactions',
+					query: 'accountId=' + options.accountIDs + '&fromDate=' + options.fromDate
+				};
+
+				if (process.env.DEBUG) {console.log('[S] send.options:' + JSON.stringify(sendOptions))};
+				app._util.yodlee.send(sendOptions, app.prepare.source.transactions)
+			}
+			else
+			{
+				if (process.env.DEBUG) {console.log('[S] source.transactions:' + JSON.stringify(response))};
+
+				app.data.source.transactions = response.data.transaction;
+				app._util.show.transactions();
+				app.process.destination.sources();
+			}
+		}	
 	},
 
-	financial:
+	destination:
 	{
-		accounts: function (response)
+		accounts: function (options, response)
 		{
 			if (_.isUndefined(response))
 			{
@@ -82,19 +116,54 @@ app.prepare =
 					url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_SEARCH&advanced=1'
 				},
 				'criteria={"fields":[{"name":"title"},{"name":"bsb"},{"name":"accountnumber"},{"name":"accountname"}],"options":{"rows":50}}',
-				app.prepare.financial.accounts);
+				app.prepare.destination.accounts);
 			}
 			else
 			{
-				app.data.accounts = JSON.parse(response.data).data.rows;
-				if (process.env.DEBUG) {console.log('accounts:' + JSON.stringify(app.data.accounts))};
-				app._util.show.accounts()
+				app.data.destination.accounts = JSON.parse(response).data.rows;
+				if (process.env.DEBUG) {console.log('[D] destination.accounts:' + JSON.stringify(app.data.destination.accounts))};
+				app.process.source.accounts()
 			}
 		},
 
-		sources: function ()
+		sources: function (options, response)
 		{
-			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_SEARCH
+			if (_.isUndefined(response))
+			{
+				var criteria = mydigitalstructure._util.search.init();
+				criteria.fields.push({"name":"bankaccount"},{"name":"bankaccounttext"},{"name":"enddate"},{"name":"startdate"})
+				criteria.options.rows = 1
+				criteria.filters.push({"name":"bankaccount", "comparison":"EQUAL_TO", "value1": options.bankAccountID});
+				criteria.sorts.push({"name":"id", "direction":"desc"})
+
+				mydigitalstructure.send(
+				{
+					url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_SEARCH&advanced=1',
+					bankAccountID: options.bankAccountID
+				},
+				'criteria=' + JSON.stringify(criteria),
+				app.prepare.destination.sources);
+			}
+			else
+			{
+				app.data.destination.sources = JSON.parse(response).data.rows;
+				if (process.env.DEBUG) {console.log('[D] destination.sources:' + JSON.stringify(app.data.destination.sources))};
+
+				var reducedAccount = _.find(app.data.source.reducedAccounts, function (account) {return account.destinationAccountID == options.bankAccountID})
+
+				var options =
+				{
+					fromDate: '2000-01-01',
+					accountIDs: reducedAccount.id
+				}
+
+				if (_.size(app.data.destination.sources) != 0)
+				{
+					options.fromDate = moment(_.first(app.data.destination.sources).enddate, 'DD MMM YYYY').format('YYYY-MM-DD')
+				}
+				
+				app.prepare.source.transactions(options)
+			}
 		},
 			
 		transactions: function ()
@@ -106,9 +175,68 @@ app.prepare =
 
 app.process =
 {
-	accounts: function ()
+	data: {},
+
+	source:
 	{
-		//XXX filter down the yodlee accounts based on what in myds
+		accounts: function ()
+		{
+			var destinationAccounts = app.data.destination.accounts; //mydigitalstructure
+			var sourceAccounts = app.data.source.accounts; //Yodlee
+
+			_.each(sourceAccounts, function (sourceAccount)
+			{
+				sourceAccount.destinationAccount = _.find(destinationAccounts, function(destinationAccount)
+				{
+					return sourceAccount.accountName == destinationAccount.accountname
+				});
+
+				if (_.isObject(sourceAccount.destinationAccount)) {sourceAccount.destinationAccountID = sourceAccount.destinationAccount.id} 
+			});
+
+			var reducedSourceAccounts = _.filter(sourceAccounts, function (sourceAccount)
+			{
+				return (sourceAccount.destinationAccountID != undefined)
+			});
+
+			app.data.source.reducedAccounts = reducedSourceAccounts;
+
+			if (process.env.DEBUG) {console.log('[S] source.reduced.accounts:' + JSON.stringify(app.data.source.reducedAccounts))};
+
+			app._util.show.accounts({accounts: reducedSourceAccounts});
+
+			app.process.data.reducedSourceAccount = _.first(reducedSourceAccounts);
+
+			app.prepare.destination.sources({bankAccountID: app.process.data.reducedSourceAccount.destinationAccountID})
+		}
+	},
+
+	destination:
+	{
+		sources: function (options, response)
+		{
+			//Create a new source record if their are new transactions
+			//app.data.destination.sources
+
+			if (_.isUndefined(response))
+			{
+				if (_.size(app.data.source.transactions) != 0)
+				{
+					mydigitalstructure.send(
+					{
+						url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_MANAGE'
+					},
+					'bankaccount=' + app.process.data.reducedSourceAccount.destinationAccountID,
+					app.process.destination.sources);
+				}	
+			}
+			else
+			{
+				//app.data.destination.sources = JSON.parse(response).data.rows;
+				if (process.env.DEBUG) {console.log('[D] destination.process.sources:' + JSON.stringify(response))};
+				//app.process.source.accounts()
+			}
+		}
 	}
 }
 
@@ -129,12 +257,19 @@ app._util.show =
 			{caption: 'Account-Balance-As-At', parentParam: 'refreshinfo', param: 'lastRefreshed'}
 		];
 
-		if (process.env.DEBUG) {console.log('---')};
-		if (process.env.DEBUG) {console.log('app._util.show.accounts:' + JSON.stringify(options.data))};
+		//if (process.env.DEBUG) {console.log('---')};
+		//if (process.env.DEBUG) {console.log('app._util.show.accounts:' + JSON.stringify(app.data.source.accounts))};
 
+		console.log('[S]----ACCOUNTS')
 		console.log(_.join(_.map(showHeader, 'caption'), ', '));
 
-		_.each(options.data.account, function (data, d)
+		var accounts = app.data.source.accounts;
+		if (!_.isUndefined(options))
+		{
+			if (!_.isUndefined(options.accounts)) {accounts = options.accounts}
+		}
+
+		_.each(accounts, function (data)
 		{
 			showData = [];
 			
@@ -160,9 +295,59 @@ app._util.show =
 			console.log(_.join(showData, ', '));
 		});
 
-		app.data.yodlee = {accounts: options.data.account}
+		console.log('----[S]')
+	},
 
-		app._util.mydigitalstructure.financials.accounts()
+	transactions: function (options)
+	{
+		var showData;
+		var showHeader =
+		[
+			{caption: 'Account-ID', param: 'accountId'},
+			{caption: 'Account-Running-Balance', parentParam: 'runningBalance', param: 'amount'},
+			{caption: 'Tran-ID', param: 'id'},
+			{caption: 'Tran-Date', param: 'transactionDate'},
+			{caption: 'Tran-Status', param: 'status'},
+			{caption: 'Tran-Cheque-Number', param: 'checkNumber'},
+			{caption: 'Tran-Amount', parentParam: 'amount', param: 'amount'},
+			{caption: 'Tran-Description', parentParam: 'description', param: 'original'},
+			{caption: 'Tran-Description-Simple', parentParam: 'description', param: 'simple'},
+			{caption: 'Tran-Created-At-Source-Date', param: 'createdDate'}
+		];
+
+		//if (process.env.DEBUG) {console.log('---')};
+		//if (process.env.DEBUG) {console.log('app._util.show.accounts:' + JSON.stringify(app.data.source.accounts))};
+
+		console.log('[S]----TRANSACTIONS')
+		console.log(_.join(_.map(showHeader, 'caption'), ', '));
+
+		_.each(app.data.source.transactions, function (data)
+		{
+			showData = [];
+			
+			_.each(showHeader, function (header)
+			{
+				if (_.isUndefined(header.parentParam))
+				{
+					showData.push(data[header.param])
+				}
+				else
+				{
+					if (_.isUndefined(data[header.parentParam]))
+					{
+						showData.push('-')
+					}
+					else
+					{
+						showData.push(data[header.parentParam][header.param])
+					}	
+				}
+			});
+
+			console.log(_.join(showData, ', '));
+		});
+
+		console.log('----[S]')
 	}
 }	
 
@@ -319,8 +504,7 @@ app._util.yodlee =
 					{	
 						if (process.env.DEBUG) {console.log('---'); console.log('#app.send.res.end.response:' + data)}
 						dataResponse = JSON.parse(data);
-
-				    	if (_.isFunction(callBack)) {callBack({data: dataResponse})};
+				    	if (_.isFunction(callBack)) {callBack(options, {data: dataResponse})};
 					});
 				});
 
