@@ -231,7 +231,8 @@ app.process =
 
 				var data = 'bankaccount=' + app.process.data.reducedSourceAccount.destinationAccountID +
 							'&startdate=' + moment(app.process.data.transactionMin.transactionDate, 'YYYY-MM-DD').format('DD MMM YYYY') +
-							'&enddate=' + moment(app.process.data.transactionMax.transactionDate, 'YYYY-MM-DD').format('DD MMM YYYY')
+							'&enddate=' + moment(app.process.data.transactionMax.transactionDate, 'YYYY-MM-DD').format('DD MMM YYYY') +
+							'&processeddate=' + moment().format('DD MMM YYYY')
 
 				if (_.size(app.data.source.transactions) != 0)
 				{
