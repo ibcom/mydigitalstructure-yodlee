@@ -10,6 +10,7 @@ process.env.DEBUG = true;
 var _ = require('lodash');
 var moment = require('moment');
 var mydigitalstructure = require('mydigitalstructure');
+
 var app = {_util: {}, data: {source: {}, destination: {}}}
 
 mydigitalstructure.init(main)
