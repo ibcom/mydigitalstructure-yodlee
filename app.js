@@ -7,8 +7,9 @@ mydigitalstructure.data.session - [init] mydigitalstructure session details - st
 
 process.env.DEBUG = true;
 
-var _ = require('lodash')
-var mydigitalstructure = require('mydigitalstructure')
+var _ = require('lodash');
+var moment = require('moment');
+var mydigitalstructure = require('mydigitalstructure');
 var app = {_util: {}, data: {source: {}, destination: {}}}
 
 mydigitalstructure.init(main)
@@ -100,6 +101,7 @@ app.prepare =
 
 				app.data.source.transactions = response.data.transaction;
 				app._util.show.transactions();
+
 				app.process.destination.sources();
 			}
 		}	
@@ -159,16 +161,48 @@ app.prepare =
 
 				if (_.size(app.data.destination.sources) != 0)
 				{
-					options.fromDate = moment(_.first(app.data.destination.sources).enddate, 'DD MMM YYYY').format('YYYY-MM-DD')
+					if (moment(_.first(app.data.destination.sources).enddate, 'DD MMM YYYY').isValid())
+					{
+						options.fromDate = moment(_.first(app.data.destination.sources).enddate, 'DD MMM YYYY').format('YYYY-MM-DD');
+					}
 				}
 				
 				app.prepare.source.transactions(options)
 			}
 		},
 			
-		transactions: function ()
+		transactions: function (options, response)
 		{
-			//FINANCIAL_BANK_ACCOUNT_TRANSACTION_SEARCH
+			if (_.isUndefined(response))
+			{
+				var criteria = mydigitalstructure._util.search.init();
+				criteria.fields.push({"name":"externalid"},{"name":"amount"},{"name":"posteddate"})
+				criteria.options.rows = 1000;
+				criteria.filters.push({"name":"posteddate", "comparison":"GREATER_THAN_OR_EQUAL_TO", "value1": app.process.data.transactionMin.transactionDate});
+				criteria.filters.push({"name":"bankaccount", "comparison":"EQUAL_TO", "value1": app.process.data.processSourceAccount.destinationAccountID});
+				criteria.sorts.push({"name":"id", "direction":"desc"})
+
+				mydigitalstructure.send(
+				{
+					url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_TRANSACTION_SEARCH&advanced=1'
+				},
+				'criteria=' + JSON.stringify(criteria),
+				app.prepare.destination.transactions);
+			}
+			else
+			{
+				app.data.destination.transactions = JSON.parse(response).data.rows;
+
+				if (JSON.parse(response).morerows == "true") 
+				{
+					//WARNING - send email based on settings
+				}
+				else
+				{
+					if (process.env.DEBUG) {console.log('[D] destination.transactions:' + JSON.stringify(app.data.destination.transactions))};
+					app.process.destination.transactions.init();
+				}
+			}
 		}
 	}		
 }
@@ -205,9 +239,9 @@ app.process =
 
 			app._util.show.accounts({accounts: reducedSourceAccounts});
 
-			app.process.data.reducedSourceAccount = _.first(reducedSourceAccounts);
+			app.process.data.processSourceAccount = _.first(reducedSourceAccounts);
 
-			app.prepare.destination.sources({bankAccountID: app.process.data.reducedSourceAccount.destinationAccountID})
+			app.prepare.destination.sources({bankAccountID: app.process.data.processSourceAccount.destinationAccountID})
 		}
 	},
 
@@ -220,22 +254,120 @@ app.process =
 
 			if (_.isUndefined(response))
 			{
+				//get min/max dates from app.data.source.transactions
+				app.process.data.transactionMax = _.maxBy(app.data.source.transactions, function(transaction) {return moment(transaction.transactionDate, 'YYYY-MM-DD')});
+				app.process.data.transactionMin = _.minBy(app.data.source.transactions, function(transaction) {return moment(transaction.transactionDate, 'YYYY-MM-DD')});
+
+				var data = 'bankaccount=' + app.process.data.processSourceAccount.destinationAccountID +
+							'&startdate=' + moment(app.process.data.transactionMin.transactionDate, 'YYYY-MM-DD').format('DD MMM YYYY') +
+							'&enddate=' + moment(app.process.data.transactionMax.transactionDate, 'YYYY-MM-DD').format('DD MMM YYYY') +
+							'&processeddate=' + moment().format('DD MMM YYYY')
+
 				if (_.size(app.data.source.transactions) != 0)
 				{
 					mydigitalstructure.send(
 					{
 						url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_MANAGE'
 					},
-					'bankaccount=' + app.process.data.reducedSourceAccount.destinationAccountID,
+					data,
 					app.process.destination.sources);
 				}	
 			}
 			else
 			{
-				//app.data.destination.sources = JSON.parse(response).data.rows;
-				if (process.env.DEBUG) {console.log('[D] destination.process.sources:' + JSON.stringify(response))};
-				//app.process.source.accounts()
+				app.data.destination.processSourceID = JSON.parse(response).id;
+				if (process.env.DEBUG) {console.log('[D] destination.process.sourceID:' + app.data.destination.processSourceID )};
+				app.prepare.destination.transactions()
 			}
+		},
+
+		transactions: 
+		{
+			init: function (options, response)
+					{
+						//Go through transactions and add to destination
+
+						app.process.data.destinationTransactions = [];
+
+						_.each(app.data.source.transactions, function (sourceTransaction)
+						{
+							sourceTransaction.processed = _.isObject(_.find(app.data.destination.transactions, function (destinationTransaction)
+							{
+								return sourceTransaction.id == destinationTransaction.externalid
+							}));
+
+						});
+
+						app.process.destination.transactions.send();
+					},
+
+			send: function (options, response)
+					{
+						app.data.source.processTransaction = _.find(app.data.source.transactions, function (transaction) {return !transaction.processed})
+
+						if (_.isObject(app.data.source.processTransaction))
+						{
+							if (process.env.DEBUG) {console.log('[D] process.transaction:' + JSON.stringify(app.data.source.processTransaction))};
+
+							var transaction = app.data.source.processTransaction;
+
+							var data =
+							{
+								source: app.process.data.destinationSourceID,
+								externalid: transaction.id,
+								amount: transaction.amount.amount,
+								posteddate: moment(transaction.transactionDate, 'YYYY-MM-DD').format('DD MMM YYYY'),
+								bankaccount: app.process.data.processSourceAccount.destinationAccountID,
+								source: app.data.destination.processSourceID,
+								notes: transaction.description.original
+							}
+
+							mydigitalstructure.send(
+							{
+								url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_TRANSACTION_MANAGE'
+							},
+							data,
+							app.process.destination.transactions.finalise);
+						}
+						else
+						{
+							var data =
+							{
+								id: app.data.destination.processSourceID,
+								remove: 1
+							}
+
+							if (_.size(app.process.data.destinationTransactions) == 0)
+							{
+								mydigitalstructure.send(
+								{
+									url: '/rpc/financial/?method=FINANCIAL_BANK_ACCOUNT_TRANSACTION_SOURCE_MANAGE'
+								},
+								data,
+								app.process.destination.transactions.done);
+							}
+							else
+							{
+								app.process.destination.transactions.done();
+							}
+						}	
+					},
+
+			finalise: function (options, response)
+					{
+						app.process.data.destinationTransactions.push(JSON.parse(response).id);
+
+						if (process.env.DEBUG) {console.log('[D] destination.process.transactionID:' + JSON.parse(response).id)};
+
+						var sourceTransaction = _.find(app.data.source.transactions, function (transaction) {return transaction.id == app.data.source.processTransaction.id})
+						sourceTransaction.processed = true;
+						app.process.destination.transactions.send();
+					},
+
+			done: function ()
+			{
+				if (process.env.DEBUG) {console.log('[D] DONE!!: ' + _.size(app.process.data.destinationTransactions))};
+			}		
 		}
 	}
 }
