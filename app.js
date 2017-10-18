@@ -30,22 +30,22 @@ app.init = function ()
 {
 	app.data.yodlee = {settings: mydigitalstructure.data._settings.yodlee};
 
-	if (process.env.DEBUG) {console.log('app.data.yodlee.settings:' + JSON.stringify(app.data.yodlee.settings))};
+	mydigitalstructure._util.testing.data(app.data.yodlee.settings, 'app.init-app.data.yodlee.settings');
 
 	app._util.yodlee.init(app.logon)
 }
 
 app.logon = function ()
 {
-	if (process.env.DEBUG) {console.log('app.data.yodlee.session:' + JSON.stringify(app.data.yodlee.session))};
+	mydigitalstructure._util.testing.data(app.data.yodlee.settings, 'app.logon-app.data.yodlee.settings');
+
 	app._util.yodlee.logon(app.start)
 }
 
 app.start = function ()
 {
-	if (process.env.DEBUG) {console.log('app.data.yodlee.user:' + JSON.stringify(app.data.yodlee.user))};
-	if (process.env.DEBUG) {console.log('---')};
-	if (process.env.DEBUG) {console.log('app.data.yodlee.session:' + JSON.stringify(app.data.yodlee.session))};
+	mydigitalstructure._util.testing.data(app.data.yodlee.user, 'app.start##app.data.yodlee.user');
+	mydigitalstructure._util.testing.data(app.data.yodlee.session, 'app.start##app.data.yodlee.session');
 
 	app.prepare.source.accounts();
 }
@@ -56,23 +56,21 @@ app.prepare =
 	{
 		accounts: function (options, response)
 		{
-			//'container=bank&providerAccountId=10419826'
-
 			if (_.isUndefined(response))
 			{
 				var sendOptions =
 				{
 					endpoint: 'accounts',
-					query: 'container=bank&providerAccountId=10419826'
+					query: 'container=bank'
 				};
 
 				app._util.yodlee.send(sendOptions, app.prepare.source.accounts)
 			}
 			else
 			{
-				if (process.env.DEBUG) {console.log('[S] source.accounts:' + JSON.stringify(response))};
-
 				app.data.source.accounts = response.data.account;
+				mydigitalstructure._util.testing.data(app.data.source.accounts, 'app.prepare.source.accounts::app.data.source.accounts');
+
 				app._util.show.accounts();
 				app.prepare.destination.accounts();
 			}
@@ -93,15 +91,19 @@ app.prepare =
 					query: 'accountId=' + options.accountIDs + '&fromDate=' + options.fromDate
 				};
 
-				if (process.env.DEBUG) {console.log('[S] send.options:' + JSON.stringify(sendOptions))};
+				mydigitalstructure._util.testing.data(sendOptions, 'app.prepare.source.transactions::options');
+
 				app._util.yodlee.send(sendOptions, app.prepare.source.transactions)
 			}
 			else
 			{
-				if (process.env.DEBUG) {console.log('[S] source.transactions:' + JSON.stringify(response))};
-
 				app.data.source.transactions = response.data.transaction;
-				app._util.show.transactions();
+				mydigitalstructure._util.testing.data(app.data.source.transactions, 'app.prepare.source.transactions::app.data.source.transactions');
+
+				if (mydigitalstructure._util.testing.status())
+				{	
+					app._util.show.transactions();
+				}	
 
 				app.process.destination.sources();
 			}
@@ -124,8 +126,10 @@ app.prepare =
 			else
 			{
 				app.data.destination.accounts = JSON.parse(response).data.rows;
-				if (process.env.DEBUG) {console.log('[D] destination.accounts:' + JSON.stringify(app.data.destination.accounts))};
-				app.process.source.accounts()
+
+				mydigitalstructure._util.testing.data(app.data.destination.accounts, 'app.prepare.destination.accounts::app.data.destination.accounts');
+
+				app.process.source.accounts.init()
 			}
 		},
 
@@ -150,7 +154,8 @@ app.prepare =
 			else
 			{
 				app.data.destination.sources = JSON.parse(response).data.rows;
-				if (process.env.DEBUG) {console.log('[D] destination.sources:' + JSON.stringify(app.data.destination.sources))};
+
+				mydigitalstructure._util.testing.data(app.data.destination.sources, 'app.prepare.destination.sources::app.data.destination.sources');
 
 				var reducedAccount = _.find(app.data.source.reducedAccounts, function (account) {return account.destinationAccountID == options.bankAccountID})
 
@@ -196,11 +201,12 @@ app.prepare =
 
 				if (JSON.parse(response).morerows == "true") 
 				{
-					//WARNING - send email based on settings
+					mydigitalstructure._util.testing.message('!Warning:Too many transactions.', 'app.prepare.destination.transactions');
+					//send email based on settings
 				}
 				else
 				{
-					if (process.env.DEBUG) {console.log('[D] destination.transactions:' + JSON.stringify(app.data.destination.transactions))};
+					mydigitalstructure._util.testing.data(app.data.destination.transactions, 'app.prepare.destination.transactions::app.data.destination.transactions');
 					app.process.destination.transactions.init();
 				}
 			}
@@ -214,35 +220,54 @@ app.process =
 
 	source:
 	{
-		accounts: function ()
+		accounts: 
 		{
-			var destinationAccounts = app.data.destination.accounts; //mydigitalstructure
-			var sourceAccounts = app.data.source.accounts; //Yodlee
-
-			_.each(sourceAccounts, function (sourceAccount)
+			init: function ()
 			{
-				sourceAccount.destinationAccount = _.find(destinationAccounts, function(destinationAccount)
+				var destinationAccounts = app.data.destination.accounts; //mydigitalstructure
+				var sourceAccounts = app.data.source.accounts; //Yodlee
+
+				_.each(sourceAccounts, function (sourceAccount)
 				{
-					return sourceAccount.accountName == destinationAccount.accountname
+					sourceAccount.processed = false;
+
+					sourceAccount.destinationAccount = _.find(destinationAccounts, function(destinationAccount)
+					{
+						return sourceAccount.accountName == destinationAccount.accountname
+					});
+
+					if (_.isObject(sourceAccount.destinationAccount)) {sourceAccount.destinationAccountID = sourceAccount.destinationAccount.id} 
 				});
 
-				if (_.isObject(sourceAccount.destinationAccount)) {sourceAccount.destinationAccountID = sourceAccount.destinationAccount.id} 
-			});
+				var reducedSourceAccounts = _.filter(sourceAccounts, function (sourceAccount)
+				{
+					return (sourceAccount.destinationAccountID != undefined)
+				});
 
-			var reducedSourceAccounts = _.filter(sourceAccounts, function (sourceAccount)
+				app.data.source.reducedAccounts = reducedSourceAccounts;
+
+				mydigitalstructure._util.testing.data(app.data.source.reducedAccounts, 'app.process.source.accounts::reducedAccounts');
+
+				if (mydigitalstructure._util.testing.status())
+				{
+					app._util.show.accounts({accounts: reducedSourceAccounts});
+				}	
+
+				app.process.source.accounts.sync()
+			},
+			
+			sync: function ()
 			{
-				return (sourceAccount.destinationAccountID != undefined)
-			});
-
-			app.data.source.reducedAccounts = reducedSourceAccounts;
-
-			if (process.env.DEBUG) {console.log('[S] source.reduced.accounts:' + JSON.stringify(app.data.source.reducedAccounts))};
-
-			app._util.show.accounts({accounts: reducedSourceAccounts});
-
-			app.process.data.processSourceAccount = _.first(reducedSourceAccounts);
-
-			app.prepare.destination.sources({bankAccountID: app.process.data.processSourceAccount.destinationAccountID})
+				if (_.isUndefined(_.find(app.data.source.reducedAccounts, function (account) {return !account.processed})))
+				{
+					mydigitalstructure._util.testing.message('ALL DONE!!', 'app.process.source.accounts.sync');
+				}
+				else
+				{
+					app.process.data.processSourceAccount = _.find(app.data.source.reducedAccounts, function (account) {return !account.processed});
+					app.prepare.destination.sources({bankAccountID: app.process.data.processSourceAccount.destinationAccountID});
+				}
+			}	
 		}
 	},
 
@@ -277,7 +302,9 @@ app.process =
 			else
 			{
 				app.data.destination.processSourceID = JSON.parse(response).id;
-				if (process.env.DEBUG) {console.log('[D] destination.process.sourceID:' + app.data.destination.processSourceID )};
+
+				mydigitalstructure._util.testing.data(app.data.destination.processSourceID, 'app.process.destination.sources::sourceid');
+
 				app.prepare.destination.transactions()
 			}
 		},
@@ -308,8 +335,6 @@ app.process =
 
 						if (_.isObject(app.data.source.processTransaction))
 						{
-							if (process.env.DEBUG) {console.log('[D] process.transaction:' + JSON.stringify(app.data.source.processTransaction))};
-
 							var transaction = app.data.source.processTransaction;
 
 							var data =
@@ -358,8 +383,6 @@ app.process =
 					{
 						app.process.data.destinationTransactions.push(JSON.parse(response).id);
 
-						if (process.env.DEBUG) {console.log('[D] destination.process.transactionID:' + JSON.parse(response).id)};
-
 						var sourceTransaction = _.find(app.data.source.transactions, function (transaction) {return transaction.id == app.data.source.processTransaction.id})
 						sourceTransaction.processed = true;
 						app.process.destination.transactions.send();
@@ -367,7 +390,12 @@ app.process =
 
 			done: function ()
 			{
-				if (process.env.DEBUG) {console.log('[D] DONE!!: ' + _.size(app.process.data.destinationTransactions))};
+				var sourceAccount = _.find(app.data.source.reducedAccounts, function (account) {return account.id == app.process.data.processSourceAccount.id})
+				sourceAccount.processed = true;
+
+				mydigitalstructure._util.testing.message(sourceAccount.accountName + ' / ' + _.size(app.process.data.destinationTransactions) + ' transaction(s)', 'app.process.destination.transactions::!DONE');
+
+				app.process.source.accounts.sync();
 			}		
 		}
 	}
@@ -389,9 +417,6 @@ app._util.show =
 			{caption: 'Account-Balance', parentParam: 'balance', param: 'amount'},
 			{caption: 'Account-Balance-As-At', parentParam: 'refreshinfo', param: 'lastRefreshed'}
 		];
-
-		//if (process.env.DEBUG) {console.log('---')};
-		//if (process.env.DEBUG) {console.log('app._util.show.accounts:' + JSON.stringify(app.data.source.accounts))};
 
 		console.log('[S]----ACCOUNTS')
 		console.log(_.join(_.map(showHeader, 'caption'), ', '));
@@ -528,7 +553,7 @@ app._util.yodlee =
 					
 					res.on('end', function ()
 					{	
-						if (process.env.DEBUG) {console.log('#app.init.res.end.response:' + data)}
+						//if (process.env.DEBUG) {console.log('#app.init.res.end.response:' + data)}
 						app.data.yodlee.session = JSON.parse(data);
 						app.data.yodlee.session.cobSession = app.data.yodlee.session.session.cobSession;
 				    	if (_.isFunction(callBack)) {callBack({data: app.data.yodlee.session})};
@@ -537,7 +562,7 @@ app._util.yodlee =
 
 				req.on('error', function(error)
 				{
-					if (process.env.DEBUG) {console.log('#app.init.req.error.response:' + error.message)}
+					//if (process.env.DEBUG) {console.log('#app.init.req.error.response:' + error.message)}
 				  	if (callBack) {callBack({error: error})};
 				});
 
@@ -597,7 +622,7 @@ app._util.yodlee =
 
 				req.on('error', function(error)
 				{
-					if (process.env.DEBUG) {console.log('#app.logon.req.error.response:' + error.message)}
+					//if (process.env.DEBUG) {console.log('#app.logon.req.error.response:' + error.message)}
 				  	if (callBack) {callBack({error: error})};
 				});
 
@@ -635,7 +660,7 @@ app._util.yodlee =
 					
 					res.on('end', function ()
 					{	
-						if (process.env.DEBUG) {console.log('---'); console.log('#app.send.res.end.response:' + data)}
+						//if (process.env.DEBUG) {console.log('---'); console.log('#app.send.res.end.response:' + data)}
 						dataResponse = JSON.parse(data);
 				    	if (_.isFunction(callBack)) {callBack(options, {data: dataResponse})};
 					});
@@ -643,11 +668,10 @@ app._util.yodlee =
 
 				req.on('error', function(error)
 				{
-					if (process.env.DEBUG) {console.log('#app.send.req.error.response:' + error.message)}
+					//if (process.env.DEBUG) {console.log('#app.send.req.error.response:' + error.message)}
 				  	if (callBack) {callBack({error: error})};
 				});
 
-				//req.write(_requestData)
 				req.end()
 			}				
 }					

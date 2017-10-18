@@ -5,8 +5,12 @@
 		"logon": "lab@ibcom.biz", 
 		"password": "lab2017!", 
 		"email": "example@email.com",
-		"testing": "true",
-		"local": "false"
+		"testing": 
+		{
+			"status": "true",
+			"showData": "true",
+			"break": "-"
+		}
 	},
 	"yodlee":
 	{
