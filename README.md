@@ -6,6 +6,7 @@ Uses the mydigitalstructure nodejs SDK and the Yodlee SDK to get transactions fr
 Designed to run on node and AWS lambda
 
 See:
+http://docs.mydigitalstructure.com/gettingstarted_financial_transactions
 http://docs.mydigitalstructure.com/gettingstarted_nodejs
 
 Use:
