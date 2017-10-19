@@ -1,10 +1,10 @@
 {
 	"mydigitalstructure":
 	{
-		"hostname": "app-next.lab.ibcom.biz", 
-		"logon": "lab@ibcom.biz", 
-		"password": "lab2017!", 
-		"email": "example@email.com",
+		"hostname": "api.mydigitalstructure.com", 
+		"logon": "", 
+		"password": "", 
+		"email": "",
 		"testing": 
 		{
 			"status": "true",
@@ -17,14 +17,14 @@
 		"hostname" : "developer.api.yodlee.com",
 		"cobrand":
 		{
-	      "logon": "sbCobdev.biziio",
-	      "password": "3cf8717b-d993-4580-836c-fba3203a749a",
+	      "logon": "",
+	      "password": "",
 	      "locale": "en_US"
 		},
 		"user":
 		{
-	      "logon": "sbMemdev.biziio2",
-	      "password": "sbMemdev.biziio2#123",
+	      "logon": "",
+	      "password": "",
 	      "locale": "en_US"
 		}
 	}

@@ -3,22 +3,25 @@ mydigitalstructure <> Yodlee Connector
 Designed to run on node and AWS lambda
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use: https://www.npmjs.com/package/aws-lambda-local
+$ lambda-local -f app.js -c settings-private.json
 */
 
 exports.handler = function (event, context)
 {
+	//context = settings
+
 	var _ = require('lodash');
 	var moment = require('moment');
 	var mydigitalstructure = require('mydigitalstructure');
 
 	var app = {_util: {}, data: {source: {}, destination: {}}}
 
-	mydigitalstructure.init(main)
+	mydigitalstructure.init(main, context)
 
 	function main(err, data)
 	{
-		//console.log('status:' + mydigitalstructure.data.session.status);
-		//console.log('myds:' + JSON.stringify(mydigitalstructure.data.settings))
+		console.log('status:' + mydigitalstructure.data.session.status);
+		console.log('myds:' + JSON.stringify(mydigitalstructure.data.settings))
 
 		if (mydigitalstructure.data.session.status == "OK")
 		{
