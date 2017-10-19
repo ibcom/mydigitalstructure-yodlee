@@ -20,9 +20,6 @@ exports.handler = function (event, context)
 
 	function main(err, data)
 	{
-		console.log('status:' + mydigitalstructure.data.session.status);
-		console.log('myds:' + JSON.stringify(mydigitalstructure.data.settings))
-
 		if (mydigitalstructure.data.session.status == "OK")
 		{
 			app.init()
@@ -421,7 +418,6 @@ exports.handler = function (event, context)
 				{caption: 'Account-Balance-As-At', parentParam: 'refreshinfo', param: 'lastRefreshed'}
 			];
 
-			console.log('[S]----ACCOUNTS')
 			console.log(_.join(_.map(showHeader, 'caption'), ', '));
 
 			var accounts = app.data.source.accounts;
@@ -454,9 +450,8 @@ exports.handler = function (event, context)
 				});
 
 				console.log(_.join(showData, ', '));
-			});
 
-			console.log('----[S]')
+			});
 		},
 
 		transactions: function (options)
@@ -476,10 +471,6 @@ exports.handler = function (event, context)
 				{caption: 'Tran-Created-At-Source-Date', param: 'createdDate'}
 			];
 
-			//if (process.env.DEBUG) {console.log('---')};
-			//if (process.env.DEBUG) {console.log('app._util.show.accounts:' + JSON.stringify(app.data.source.accounts))};
-
-			console.log('[S]----TRANSACTIONS')
 			console.log(_.join(_.map(showHeader, 'caption'), ', '));
 
 			_.each(app.data.source.transactions, function (data)
@@ -506,9 +497,8 @@ exports.handler = function (event, context)
 				});
 
 				console.log(_.join(showData, ', '));
-			});
 
-			console.log('----[S]')
+			});
 		}
 	}	
 
@@ -556,7 +546,6 @@ exports.handler = function (event, context)
 						
 						res.on('end', function ()
 						{	
-							//if (process.env.DEBUG) {console.log('#app.init.res.end.response:' + data)}
 							app.data.yodlee.session = JSON.parse(data);
 							app.data.yodlee.session.cobSession = app.data.yodlee.session.session.cobSession;
 					    	if (_.isFunction(callBack)) {callBack({data: app.data.yodlee.session})};
@@ -565,7 +554,6 @@ exports.handler = function (event, context)
 
 					req.on('error', function(error)
 					{
-						//if (process.env.DEBUG) {console.log('#app.init.req.error.response:' + error.message)}
 					  	if (callBack) {callBack({error: error})};
 					});
 
@@ -615,7 +603,6 @@ exports.handler = function (event, context)
 						
 						res.on('end', function ()
 						{	
-							if (process.env.DEBUG) {console.log('#app.logon.res.end.response:' + data)}
 							app.data.yodlee.user = JSON.parse(data).user;
 							app.data.yodlee.session.userSession = app.data.yodlee.user.session.userSession;
 
@@ -625,7 +612,6 @@ exports.handler = function (event, context)
 
 					req.on('error', function(error)
 					{
-						//if (process.env.DEBUG) {console.log('#app.logon.req.error.response:' + error.message)}
 					  	if (callBack) {callBack({error: error})};
 					});
 
@@ -663,7 +649,6 @@ exports.handler = function (event, context)
 						
 						res.on('end', function ()
 						{	
-							//if (process.env.DEBUG) {console.log('---'); console.log('#app.send.res.end.response:' + data)}
 							dataResponse = JSON.parse(data);
 					    	if (_.isFunction(callBack)) {callBack(options, {data: dataResponse})};
 						});
@@ -671,7 +656,6 @@ exports.handler = function (event, context)
 
 					req.on('error', function(error)
 					{
-						//if (process.env.DEBUG) {console.log('#app.send.req.error.response:' + error.message)}
 					  	if (callBack) {callBack({error: error})};
 					});
 
