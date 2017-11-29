@@ -15,6 +15,7 @@
 	"yodlee":
 	{
 		"hostname" : "developer.api.yodlee.com",
+		"basepath" : "/ysl/restserver/v1",
 		"cobrand":
 		{
 	      "logon": "",

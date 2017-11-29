@@ -524,7 +524,7 @@ exports.handler = function (event, context)
 					{
 						hostname: app.data.yodlee.settings.hostname,
 						port: 443,
-						path: '/ysl/restserver/v1/cobrand/login',
+						path: app.data.yodlee.settings.basepath + '/cobrand/login',
 						method: 'POST',
 						headers:
 						{
@@ -580,7 +580,7 @@ exports.handler = function (event, context)
 					{
 						hostname: app.data.yodlee.settings.hostname,
 						port: 443,
-						path: '/ysl/restserver/v1/user/login',
+						path: app.data.yodlee.settings.basepath + '/user/login',
 						method: 'POST',
 						headers:
 						{
@@ -628,7 +628,7 @@ exports.handler = function (event, context)
 					{
 						hostname: app.data.yodlee.settings.hostname,
 						port: 443,
-						path: '/ysl/restserver/v1/' + options.endpoint + (options.query!=undefined?'/?' + options.query:''),
+						path: app.data.yodlee.settings.basepath + '/' + options.endpoint + (options.query!=undefined?'/?' + options.query:''),
 						method: options.method,
 						headers:
 						{
