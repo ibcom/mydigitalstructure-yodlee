@@ -14,7 +14,12 @@ exports.handler = function (event, context)
 	var moment = require('moment');
 	var mydigitalstructure = require('mydigitalstructure');
 
-	var app = {_util: {}, data: {source: {}, destination: {}}}
+	if (_.isUndefined(event))
+	{
+		event = {method: 'sync'}
+	}
+
+	var app = {_util: {}, data: {source: {}, destination: {}, event: event}}
 
 	mydigitalstructure.init(main, context)
 
@@ -47,7 +52,43 @@ exports.handler = function (event, context)
 		mydigitalstructure._util.testing.data(app.data.yodlee.user, 'app.start##app.data.yodlee.user');
 		mydigitalstructure._util.testing.data(app.data.yodlee.session, 'app.start##app.data.yodlee.session');
 
-		app.prepare.source.accounts();
+		if (app.data.event.method == 'sync')
+		{
+			app.prepare.source.accounts();
+		}
+
+		if (app.data.event.method == 'register')
+		{
+			if (app.data.event.context == 'user')
+			{	
+				app.register.user();
+			}	
+		}
+	}
+
+	app.register =
+	{
+		user: function (options, response)
+		{
+			if (_.isUndefined(response))
+			{
+				var sendOptions =
+				{
+					//XXX - use app.data.event.user -- need to link to myds user in data, to be used in sync.
+					endpoint: 'user',
+					query: 'container=bank'
+				};
+
+				app._util.yodlee.send(sendOptions, app.register.user)
+			}
+			else
+			{
+				app.data.register = response.data.user;
+				mydigitalstructure._util.testing.data(pp.data.register, 'app.register.user::app.data.register');
+
+				//app._util.show.user();
+			}
+		}
 	}
 
 	app.prepare =
