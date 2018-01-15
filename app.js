@@ -146,7 +146,7 @@ exports.handler = function (event, context)
 				mydigitalstructure._util.testing.data(app.data.accessTokens[0].value, 'token');
 				mydigitalstructure._util.testing.data(command);
 
-				var fs = require('fs'); fs.writeFile("yodlee.txt", command)
+				var fs = require('fs'); fs.writeFile("yodlee.txt", command, function (err) {})
 			}
 		}
 	}
