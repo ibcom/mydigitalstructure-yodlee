@@ -87,7 +87,7 @@ exports.handler = function (event, context)
 
 				var session = mydigitalstructure.data.session;
 
-				options.param.user.loginName = options.param.user.loginName + session.user;
+				//options.param.user.loginName = options.param.user.loginName + session.user;
 
 				var sendOptions =
 				{
