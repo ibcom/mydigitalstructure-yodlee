@@ -136,9 +136,15 @@ exports.handler = function (event, context)
 				'<input type="submit" name="submit" />' +
 				'</form>';
 
+				var command =
+				'ns1blankspace.util.financial.bankAccounts.link.show({}, {' +
+				'userSession: "' + app.data.yodlee.session.userSession + '",' +
+				'appToken: "' + app.data.accessTokens[0].value + '"})'
+
 				mydigitalstructure._util.testing.data(data);
 				mydigitalstructure._util.testing.data(app.data.yodlee.session.userSession, 'rsession');
 				mydigitalstructure._util.testing.data(app.data.accessTokens[0].value, 'token');
+				mydigitalstructure._util.testing.data(command);
 			}
 		}
 	}
