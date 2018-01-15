@@ -3,7 +3,7 @@ mydigitalstructure <> Yodlee Connector
 Designed to run on node and AWS lambda
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use: https://www.npmjs.com/package/aws-lambda-local
-$ lambda-local -f app.js -c settings-private.json
+$ lambda-local -f app.js -c settings-private.json -e event.json
 */
 
 exports.handler = function (event, context)
@@ -14,14 +14,11 @@ exports.handler = function (event, context)
 	var moment = require('moment');
 	var mydigitalstructure = require('mydigitalstructure');
 
-	if (_.isUndefined(event))
-	{
-		event = {method: 'sync'}
-	}
-
 	var app = {_util: {}, data: {source: {}, destination: {}, event: event}}
 
 	mydigitalstructure.init(main, context)
+
+	mydigitalstructure._util.testing.data(event, 'event');
 
 	function main(err, data)
 	{
@@ -33,36 +30,50 @@ exports.handler = function (event, context)
 
 	app.init = function ()
 	{
-		app.data.yodlee = {settings: mydigitalstructure.data._settings.yodlee};
+		if (_.isObject(app.data.event.user))
+		{
+			mydigitalstructure.data._settings.yodlee.user = app.data.event.user
+		}
 
+		app.data.yodlee = {settings: mydigitalstructure.data._settings.yodlee};
 		mydigitalstructure._util.testing.data(app.data.yodlee.settings, 'app.init-app.data.yodlee.settings');
 
-		app._util.yodlee.init(app.logon)
+		app._util.yodlee.init(app.logon);
 	}
 
 	app.logon = function ()
 	{
 		mydigitalstructure._util.testing.data(app.data.yodlee.settings, 'app.logon-app.data.yodlee.settings');
-
-		app._util.yodlee.logon(app.start)
+		
+		if (app.data.yodlee.settings.user.logon != '')
+		{
+			app._util.yodlee.logon(app.start);
+		}
+		else
+		{
+			app.start();
+		}
 	}
 
 	app.start = function ()
 	{
 		mydigitalstructure._util.testing.data(app.data.yodlee.user, 'app.start##app.data.yodlee.user');
 		mydigitalstructure._util.testing.data(app.data.yodlee.session, 'app.start##app.data.yodlee.session');
+		mydigitalstructure._util.testing.data(app.data.event, 'app.start##app.data.event');
 
 		if (app.data.event.method == 'sync')
 		{
-			app.prepare.source.accounts();
+			app.prepare.source.accounts(app.data.event);
 		}
 
-		if (app.data.event.method == 'register')
+		if (app.data.event.method == 'user/register')
 		{
-			if (app.data.event.context == 'user')
-			{	
-				app.register.user();
-			}	
+			app.register.user(app.data.event);
+		}
+
+		if (app.data.event.method == 'user/accessTokens')
+		{
+			app.user.accessTokens(app.data.event);
 		}
 	}
 
@@ -72,11 +83,17 @@ exports.handler = function (event, context)
 		{
 			if (_.isUndefined(response))
 			{
+				mydigitalstructure._util.testing.data(mydigitalstructure.data.session, 'app.register##mydigitalstructure.data.session');
+
+				var session = mydigitalstructure.data.session;
+
+				options.param.user.loginName = options.param.user.loginName + session.user;
+
 				var sendOptions =
 				{
-					//XXX - use app.data.event.user -- need to link to myds user in data, to be used in sync.
-					endpoint: 'user',
-					query: 'container=bank'
+					endpoint: options.method,
+					data: options.param,
+					action: options.action
 				};
 
 				app._util.yodlee.send(sendOptions, app.register.user)
@@ -84,9 +101,43 @@ exports.handler = function (event, context)
 			else
 			{
 				app.data.register = response.data.user;
-				mydigitalstructure._util.testing.data(pp.data.register, 'app.register.user::app.data.register');
+				mydigitalstructure._util.testing.data(response, 'app.register.user::app.data.register');
+			}
+		}
+	}
 
-				//app._util.show.user();
+	app.user =
+	{
+		accessTokens: function (options, response)
+		{
+			if (_.isUndefined(response))
+			{
+				var sendOptions =
+				{
+					endpoint: options.method,
+					query: 'appIds=10003600',
+					action: options.action
+				};
+
+				app._util.yodlee.send(sendOptions, app.user.accessTokens)
+			}
+			else
+			{
+				mydigitalstructure._util.testing.data(response, '_response')
+				app.data.accessTokens = response.data.user.accessTokens;
+				mydigitalstructure._util.testing.data(app.data.accessTokens, 'app.user.accessTokens::app.data.accessTokens');
+
+				var data = 
+				'<form action="https://quickstartaunode.yodlee.com.au/authenticate/quickstarta3/?channelAppName=quickstartau" method="POST">' +
+				'<input type="text" name="app" value="10003600" />' +
+				'<input type="text" name="rsession" value="' + app.data.yodlee.session.userSession + '"/>' +
+				'<input type="text" name="token" value="' + app.data.accessTokens[0].value + '"/>' +
+				'<input type="text" name="redirectReq" value="true"/>' +
+				'<input type="submit" name="submit" />' +
+				'</form>';
+
+				mydigitalstructure._util.testing.data(data);
+
 			}
 		}
 	}
@@ -663,19 +714,41 @@ exports.handler = function (event, context)
 				{
 					var https = require('https');
 					
-					if (_.isUndefined(options.method)) {options.method = 'GET'};
+					if (_.isUndefined(options.action)) {options.action = 'GET'};
+
+					var userSession = '';
+
+					if (app.data.yodlee.session.userSession != undefined)
+					{
+						userSession = ', userSession=' + app.data.yodlee.session.userSession
+					}
+
+					var headers =
+					{
+						'Authorization': 'cobSession=' + app.data.yodlee.session.cobSession + userSession
+					}
+
+					var _requestData;
+
+					if (_.isObject(options.data))
+					{
+						_requestData = JSON.stringify(options.data);
+
+						headers['Content-Type'] = 'application/json';
+						headers['Content-Length'] = Buffer.byteLength(_requestData);
+					}
 
 					var requestOptions =
 					{
 						hostname: app.data.yodlee.settings.hostname,
 						port: 443,
 						path: app.data.yodlee.settings.basepath + '/' + options.endpoint + (options.query!=undefined?'/?' + options.query:''),
-						method: options.method,
-						headers:
-						{
-							'Authorization': 'cobSession=' + app.data.yodlee.session.cobSession + ', userSession=' + app.data.yodlee.session.userSession
-						}
+						method: options.action,
+						headers: headers
 					};
+
+					mydigitalstructure._util.testing.data(requestOptions, 'send-requestOptions');
+					mydigitalstructure._util.testing.data(_requestData, 'send-requestData');
 
 					var req = https.request(requestOptions, function(res)
 					{
@@ -700,7 +773,7 @@ exports.handler = function (event, context)
 					  	if (callBack) {callBack({error: error})};
 					});
 
-					req.end()
+					req.end(_requestData)
 				}				
 	}
 }					

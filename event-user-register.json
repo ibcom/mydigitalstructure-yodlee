@@ -1,0 +1,20 @@
+{	
+	"method": "user/register",
+	"action": "POST",
+	"param":
+	{
+		"user":
+		{
+  			"loginName": "myds-", 
+  			"password": "@12345Xa", 
+  			"email": "yodlee@mydigitalstructure.com"
+  		},
+  		"preferences":
+  		{
+			"currency": "AUD",
+			"timeZone": "AET",
+			"dateFormat": "dd/MM/yyyy",
+			"locale": "en_US"
+		}
+  	}
+}

@@ -1,0 +1,10 @@
+{	
+	"method": "user/accessTokens",
+	"action": "GET",
+	"user":
+	{
+      "logon": "myds-1",
+      "password": "@12345Xa",
+      "locale": "en_US"
+	}
+}
