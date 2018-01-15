@@ -137,7 +137,8 @@ exports.handler = function (event, context)
 				'</form>';
 
 				mydigitalstructure._util.testing.data(data);
-
+				mydigitalstructure._util.testing.data(app.data.yodlee.session.userSession, 'rsession');
+				mydigitalstructure._util.testing.data(app.data.accessTokens[0].value, 'token');
 			}
 		}
 	}
