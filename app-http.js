@@ -1,9 +1,7 @@
 /* 
-mydigitalstructure <> Yodlee Connector
+mydigitalstructure <> Yodlee Connector -- http interface for register and accesstokens
 Designed to run on node and AWS lambda
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
-Use: https://www.npmjs.com/package/aws-lambda-local
-$ lambda-local -f app.js -c settings-private.json -e event.json
 */
 
 var _ = require('lodash');
@@ -24,100 +22,99 @@ app.http.requestHandler = function (httpRequest, httpResponse)
 
 app.http.accessCheck = function (options, response)
 {
-	if (_.isUndefined(response))
+	if (_.startsWith(options.httpRequest.url, '_', 1))
 	{
-		var sendOptions = 
+		if (_.isUndefined(response))
 		{
-			url: '/rpc/core/?method=CORE_SPACE_SEARCH&advanced=1'
-		};
+			var sendOptions = 
+			{
+				url: '/rpc/core/?method=CORE_SPACE_SEARCH&advanced=1'
+			};
 
-		console.log(sendOptions)
-
-		mydigitalstructure.send(sendOptions,
-		'criteria={"fields":[{"name":"space"},{"name":"etag"}],"options":{"rows":1000}}',
-		app.http.accessCheck,
-		options);
-	}
-	else
-	{
-		//mydigitalstructure._util.testing.data(_.clone(options), 'options');
-		app.data.destination.spaces = JSON.parse(response).data.rows;
-		mydigitalstructure._util.testing.data(JSON.stringify(app.data.destination.spaces), 'app.http.spaces::app.data.destination.spaces');
-
-		var context;
-		var method;
-		var URL = require('url');
-
-		if (_.startsWith(options.httpRequest.url, '_', 1))
+			mydigitalstructure.send(sendOptions,
+				'criteria={"fields":[{"name":"space"},{"name":"etag"}],"options":{"rows":1000}}',
+				app.http.accessCheck,
+				options);
+		}
+		else
 		{
-			console.log(options.httpRequest.url)
+			app.data.destination.spaces = JSON.parse(response).data.rows;
+			mydigitalstructure._util.testing.data(JSON.stringify(app.data.destination.spaces), 'app.http.spaces::app.data.destination.spaces');
+
+			var context;
+			var method;
+			var URL = require('url');
 
 			var _request = _.first(_.split(options.httpRequest.url, '?'));
 			_request = _.split(_request, '/');
 			method = _.lowerCase(_.replace(_request[1], '_', ''));
 			context = _request[2]
-		}
+		
 
-		mydigitalstructure._util.testing.data(method, 'http-request-method');
-		mydigitalstructure._util.testing.data(context, 'http-request-context');
+			mydigitalstructure._util.testing.data(method, 'http-request-method');
+			mydigitalstructure._util.testing.data(context, 'http-request-context');
 
-		var access = _.find(app.data.destination.spaces, function (space) {return space.etag == context});
+			var access = _.find(app.data.destination.spaces, function (space) {return space.etag == context});
 
-		if (access == undefined)
-		{
-			var message = {status: 'ER', errorMessage: 'No access to space (' + context + ')', errorCode: 'MYDS01'}
-			if (options.httpResponse != undefined) {app.http.requestHandlerEnd(options.httpResponse, message)}
-		}
-		else
-		{
-			var event = {httpResponse: options.httpResponse, context: context};
-
-			if (method == 'register')
+			if (access == undefined)
 			{
-				event = _.assign(event,
-				{	
-					"method": "user/register",
-					"action": "POST",
-					"param":
-					{
+				var message = {status: 'ER', errorMessage: 'No access to space (' + context + ')', errorCode: 'MYDS01'}
+				if (options.httpResponse != undefined) {app.http.requestHandlerEnd(options.httpResponse, message)}
+			}
+			else
+			{
+				var event = {httpResponse: options.httpResponse, context: context};
+
+				if (method == 'register')
+				{
+					event = _.assign(event,
+					{	
+						"method": "user/register",
+						"action": "POST",
+						"param":
+						{
+							"user":
+							{
+					  			"loginName": 'myds-' + access.space, 
+					  			"password": "@12345Xa", 
+					  			"email": "yodlee@mydigitalstructure.com"
+					  		},
+					  		"preferences":
+					  		{
+								"currency": "AUD",
+								"timeZone": "AET",
+								"dateFormat": "dd/MM/yyyy",
+								"locale": "en_US"
+							}
+					  	}
+					});
+
+					app.register.user(event);
+				}	
+
+				if (method == 'accesstokens')
+				{
+					event = _.assign(event,
+					{	
+						"method": "user/accessTokens",
+						"action": "GET",
 						"user":
 						{
-				  			"loginName": 'myds-' + access.space, 
-				  			"password": "@12345Xa", 
-				  			"email": "yodlee@mydigitalstructure.com"
-				  		},
-				  		"preferences":
-				  		{
-							"currency": "AUD",
-							"timeZone": "AET",
-							"dateFormat": "dd/MM/yyyy",
-							"locale": "en_US"
+					      "logon": 'myds-' + access.space,
+					      "password": "@12345Xa",
+					      "locale": "en_US"
 						}
-				  	}
-				});
+					});
 
-				app.register.user(event);
-			}	
-
-			if (method == 'accesstokens')
-			{
-				event = _.assign(event,
-				{	
-					"method": "user/accessTokens",
-					"action": "GET",
-					"user":
-					{
-				      "logon": 'myds-' + access.space,
-				      "password": "@12345Xa",
-				      "locale": "en_US"
-					}
-				});
-
-				app._util.yodlee.logon(event, app.user.accessTokens)
-				//app.user.accessTokens(event);
+					app._util.yodlee.logon(event, app.user.accessTokens)
+				}
 			}
 		}
-	}			
+	}		
+	else
+	{
+		app.http.requestHandlerEnd(options.httpResponse, 'OK');
+	}	
 }
 
 app.http.requestHandlerEnd = function (response, message)
@@ -134,7 +131,7 @@ app.http.start = function ()
 	{
 	  if (err)
 	  {
-	    return console.log('Server can not not start!!', err)
+			//return console.log('Server can not not start!!', err)
 	  }
 
 	  mydigitalstructure._util.testing.message('Server has started and is listening on ' + app.http.port + '.')
@@ -163,8 +160,6 @@ app.init = function ()
 
 	app.data.yodlee = {settings: mydigitalstructure.data._settings.yodlee};
 	mydigitalstructure._util.testing.data(app.data.yodlee.settings, 'app.init-app.data.yodlee.settings');
-
-	//app.prepare.destination.spaces()
 
 	app._util.yodlee.init(app.http.start);
 }
@@ -284,9 +279,6 @@ app.prepare =
 
 		transactions: function (options, response)
 		{
-			//https://developer.yodlee.com/apidocs/index.php#!/transactions/getTransactions
-			//https://developer.api.yodlee.com:443/ysl/restserver/v1/transactions?accountId=10916521&fromDate=2000-01-01
-
 			if (_.isUndefined(response))
 			{
 				if (_.isUndefined(options.fromDate)) {options.fromDate = '2000-01-01'}
