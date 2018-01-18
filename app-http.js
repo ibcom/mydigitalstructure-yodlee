@@ -2,6 +2,9 @@
 mydigitalstructure <> Yodlee Connector -- http interface for register and accesstokens
 Designed to run on node and AWS lambda
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
+> forever start app-http.js
+> forever stopall
+See: https://github.com/foreverjs/forever
 */
 
 var _ = require('lodash');
