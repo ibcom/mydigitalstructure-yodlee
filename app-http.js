@@ -2,9 +2,7 @@
 mydigitalstructure <> Yodlee Connector -- http interface for register and accesstokens
 Designed to run on node and AWS lambda
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
-> forever start app-http.js
-> forever stopall
-See: https://github.com/foreverjs/forever
+Use app-http-service.js to install as service on Windows.
 */
 
 var _ = require('lodash');
@@ -67,6 +65,7 @@ app.http.accessCheck = function (options, response)
 			else
 			{
 				var event = {httpResponse: options.httpResponse, context: context};
+				var defaultPassword = mydigitalstructure.data._settings.yodlee.defaults.password;
 
 				if (method == 'register')
 				{
@@ -79,7 +78,7 @@ app.http.accessCheck = function (options, response)
 							"user":
 							{
 					  			"loginName": 'myds-' + access.space, 
-					  			"password": "@12345Xa", 
+					  			"password": defaultPassword, 
 					  			"email": "yodlee@mydigitalstructure.com"
 					  		},
 					  		"preferences":
@@ -104,7 +103,7 @@ app.http.accessCheck = function (options, response)
 						"user":
 						{
 					      "logon": 'myds-' + access.space,
-					      "password": "@12345Xa",
+					      "password": defaultPassword,
 					      "locale": "en_US"
 						}
 					});
@@ -176,8 +175,6 @@ app.register =
 			mydigitalstructure._util.testing.data(mydigitalstructure.data.session, 'app.register##mydigitalstructure.data.session');
 
 			var session = mydigitalstructure.data.session;
-
-			if (options.loginName != undefined) {options.param.user.loginName = options.loginName}
 
 			var sendOptions =
 			{
