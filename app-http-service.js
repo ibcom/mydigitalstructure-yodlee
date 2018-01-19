@@ -15,13 +15,12 @@ var service = new Service(
 	name: 'mydigitalstructure / Yodlee Proxy',
 	description: 'Nodejs based mydigitalstructure/Yodlee proxy.',
 	script: 'C:\\lab\\mydigitalstructure-yodlee\\app-http.js'
-  ]
 });
 
 /*
 service.on('install',function()
 {
-	svc.start();
+	service.start();
 });
 */
 
