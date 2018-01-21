@@ -1,9 +1,9 @@
 {	
-	"method": "user/accessTokens",
+	"method": "import/sync",
 	"action": "GET",
 	"user":
 	{
-      "logon": "myds-",
+		"logon": "myds-",
       "locale": "en_US"
 	}
 }

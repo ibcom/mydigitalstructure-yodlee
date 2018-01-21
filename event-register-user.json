@@ -1,13 +1,12 @@
 {	
-	"method": "user/register",
+	"method": "register/user",
 	"action": "POST",
 	"param":
 	{
 		"user":
 		{
-  			"loginName": "myds-14062", 
-  			"password": "@12345Xa", 
-  			"email": "yodlee-14062@mydigitalstructure.com"
+  			"loginName": "myds-", 
+  			"email": "yodlee@mydigitalstructure.com"
   		},
   		"preferences":
   		{

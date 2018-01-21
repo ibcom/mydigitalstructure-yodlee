@@ -1,5 +1,5 @@
 {	
-	"method": "user/accessTokens",
+	"method": "user/accounts",
 	"action": "GET",
 	"user":
 	{

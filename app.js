@@ -35,6 +35,10 @@ exports.handler = function (event, context)
 			mydigitalstructure.data._settings.yodlee.user = app.data.event.user
 		}
 
+		var defaultPassword = mydigitalstructure.data._settings.yodlee.defaults.password;
+
+		mydigitalstructure.data._settings.yodlee.user.password = defaultPassword;
+
 		app.data.yodlee = {settings: mydigitalstructure.data._settings.yodlee};
 		mydigitalstructure._util.testing.data(app.data.yodlee.settings, 'app.init-app.data.yodlee.settings');
 
@@ -66,7 +70,7 @@ exports.handler = function (event, context)
 			app.prepare.source.accounts(app.data.event);
 		}
 
-		if (app.data.event.method == 'user/register')
+		if (app.data.event.method == 'register/user')
 		{
 			app.register.user(app.data.event);
 		}
@@ -74,6 +78,11 @@ exports.handler = function (event, context)
 		if (app.data.event.method == 'user/accessTokens')
 		{
 			app.user.accessTokens(app.data.event);
+		}
+
+		if (app.data.event.method == 'user/accounts')
+		{
+			app.user.accounts(app.data.event);
 		}
 	}
 
@@ -86,8 +95,6 @@ exports.handler = function (event, context)
 				mydigitalstructure._util.testing.data(mydigitalstructure.data.session, 'app.register##mydigitalstructure.data.session');
 
 				var session = mydigitalstructure.data.session;
-
-				//options.param.user.loginName = options.param.user.loginName + session.user;
 
 				var sendOptions =
 				{
@@ -148,7 +155,60 @@ exports.handler = function (event, context)
 
 				var fs = require('fs'); fs.writeFile("yodlee.txt", command, function (err) {})
 			}
-		}
+		},
+
+		accounts: function (options, response)
+		{
+			if (_.isUndefined(response))
+			{
+				var sendOptions =
+				{
+					endpoint: 'accounts',
+					query: 'container=bank'
+				};
+
+				app._util.yodlee.send(sendOptions, app.user.accounts)
+			}
+			else
+			{
+				mydigitalstructure._util.testing.data(response.data.account, 'app.user.accounts::response.data.account');
+
+				app._util.show.accounts({accounts: response.data.account});
+			}
+		},
+
+		transactions: function (options, response)
+		{
+			//https://developer.yodlee.com/apidocs/index.php#!/transactions/getTransactions
+			//https://developer.api.yodlee.com:443/ysl/restserver/v1/transactions?accountId=10916521&fromDate=2000-01-01
+
+			if (_.isUndefined(response))
+			{
+				if (_.isUndefined(options.fromDate)) {options.fromDate = '2000-01-01'}
+
+				var sendOptions =
+				{
+					endpoint: 'transactions',
+					query: 'accountId=' + options.accountIDs + '&fromDate=' + options.fromDate
+				};
+
+				mydigitalstructure._util.testing.data(sendOptions, 'app.prepare.source.transactions::options');
+
+				app._util.yodlee.send(sendOptions, app.prepare.source.transactions)
+			}
+			else
+			{
+				app.data.source.transactions = response.data.transaction;
+				mydigitalstructure._util.testing.data(app.data.source.transactions, 'app.prepare.source.transactions::app.data.source.transactions');
+
+				if (mydigitalstructure._util.testing.status())
+				{	
+					app._util.show.transactions();
+				}	
+
+				app.process.destination.sources();
+			}
+		}	
 	}
 
 	app.prepare =
@@ -521,7 +581,6 @@ exports.handler = function (event, context)
 
 			console.log(_.join(_.map(showHeader, 'caption'), ', '));
 
-			var accounts = app.data.source.accounts;
 			if (!_.isUndefined(options))
 			{
 				if (!_.isUndefined(options.accounts)) {accounts = options.accounts}
