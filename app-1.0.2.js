@@ -1,9 +1,10 @@
 /* 
 mydigitalstructure <> Yodlee Connector
 Designed to run on node and AWS lambda
+mark.byers@ibcom.biz
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use: https://www.npmjs.com/package/aws-lambda-local
-$ lambda-local -f app-1.0.1.js -c settings-private.json -e event.json
+$ lambda-local -f app-1.0.2.js -c settings-private.json -e event.json
 */
 
 exports.handler = function (event, context)

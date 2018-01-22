@@ -12,7 +12,7 @@ http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use:
 https://www.npmjs.com/package/aws-lambda-local
 
-`lambda-local -f app.js -c settings-private.json -t 300`
+`lambda-local -f app.js -c settings-private.json -t 300 -e event.json`
 
 Import flow
 ===========
