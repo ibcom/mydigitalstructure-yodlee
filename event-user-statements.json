@@ -1,9 +1,9 @@
 {	
-	"method": "user/accounts",
+	"method": "user/statements",
 	"action": "GET",
 	"user":
 	{
-      "logon": "myds-888",
+      "logon": "myds-1",
       "locale": "en_US"
 	}
 }

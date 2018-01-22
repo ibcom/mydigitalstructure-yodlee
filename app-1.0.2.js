@@ -85,6 +85,16 @@ exports.handler = function (event, context)
 		{
 			app.user.accounts(app.data.event);
 		}
+
+		if (app.data.event.method == 'user/statements')
+		{
+			app.user.statements(app.data.event);
+		}
+
+		if (app.data.event.method == 'user/summary')
+		{
+			app.user.summary(app.data.event);
+		}
 	}
 
 	app.register =
@@ -180,7 +190,50 @@ exports.handler = function (event, context)
 				app._util.show.accounts({accounts: app.user.data.accounts});
 
 				var options = {accountIDs: _.map(app.user.data.accounts, 'id')}
-				app.user.transactions(options);
+				//app.user.transactions(options);
+				app.user.summary(options);
+			}
+		},
+
+		statements: function (options, response)
+		{
+			if (_.isUndefined(response))
+			{
+				var sendOptions =
+				{
+					endpoint: 'statements',
+					query: 'isLatest=false'
+				};
+
+				app._util.yodlee.send(sendOptions, app.user.statements)
+			}
+			else
+			{
+				mydigitalstructure._util.testing.data(response.data.statement, 'app.user.statements::response.data.statement');
+
+				//app.user.data.accounts = response.data.account;
+				//app._util.show.accounts({accounts: app.user.data.accounts});
+			}
+		},
+
+		summary: function (options, response)
+		{
+			if (_.isUndefined(response))
+			{
+				var sendOptions =
+				{
+					endpoint: 'derived/transactionSummary',
+					query: 'groupBy=CATEGORY&categoryType=INCOME&interval=M&include=details&accountId=' + options.accountIDs
+				};
+
+				app._util.yodlee.send(sendOptions, app.user.summary)
+			}
+			else
+			{
+				mydigitalstructure._util.testing.data(response, 'app.user.summary::response.data.transactionSummary');
+
+				//app.user.data.accounts = response.data.account;
+				//app._util.show.accounts({accounts: app.user.data.accounts});
 			}
 		},
 
