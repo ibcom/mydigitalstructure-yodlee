@@ -27,6 +27,7 @@ destination: mydigitalstructure
 + app.import.process.destination.switchSpace
 
 + app.import.prepare.source.accounts
+
 For logged on Yodlee user get linked bank accounts
 
 + app.import.prepare.destination.accounts
