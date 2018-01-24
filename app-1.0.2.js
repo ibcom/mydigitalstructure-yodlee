@@ -4,7 +4,7 @@ Designed to run on node and AWS lambda
 mark.byers@ibcom.biz
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use: https://www.npmjs.com/package/aws-lambda-local
-$ lambda-local -f app-1.0.2.js -c settings-private.json -e event.json
+$ lambda-local -f app-1.0.2.js -t 9000 -c settings-private.json -e event.json
 */
 
 exports.handler = function (event, context)
@@ -33,11 +33,24 @@ exports.handler = function (event, context)
 	{
 		if (_.isObject(app.data.event.user))
 		{
-			mydigitalstructure.data._settings.yodlee.user = app.data.event.user
+			if (!_.isUndefined(app.data.event.user.logon))
+			{
+				mydigitalstructure.data._settings.yodlee.user.logon = app.data.event.user.logon
+			}
+			
+			if (!_.isUndefined(app.data.event.user.password))
+			{
+				mydigitalstructure.data._settings.yodlee.user.password = app.data.event.user.password
+			}
 		}
 
 		var defaultPassword = mydigitalstructure.data._settings.yodlee.defaults.password;
-		mydigitalstructure.data._settings.yodlee.user.password = defaultPassword;
+
+		if (_.isUndefined(mydigitalstructure.data._settings.yodlee.user.password) ||
+				mydigitalstructure.data._settings.yodlee.user.password == '')
+		{	
+			mydigitalstructure.data._settings.yodlee.user.password = defaultPassword;
+		}
 
 		app.data.yodlee = {settings: mydigitalstructure.data._settings.yodlee};
 		mydigitalstructure._util.testing.data(app.data.yodlee.settings, 'app.init##app.data.yodlee.settings');
@@ -303,7 +316,7 @@ exports.handler = function (event, context)
 						var sendOptions =
 						{
 							endpoint: 'accounts',
-							query: 'container=bank'
+							query: ''
 						};
 
 						app._util.yodlee.send(sendOptions, app.import.prepare.source.accounts)
@@ -575,9 +588,10 @@ exports.handler = function (event, context)
 						{
 							mydigitalstructure._util.testing.message('ALL DONE!!', 'app.import.process.source.accounts.sync');
 
-							var user = _.find(app.import.data.users, function (user) {return user.id == app.import.data.user.id})
+							var user = _.find(app.import.data.users, function (user) {return user.logon == app.import.data.user.logon})
 							user.processed = true;
-							app.import.sync() //do next user
+							app.import.process.destination.switchBack();
+							//app.import.sync() //do next user, call by switchBack
 						}
 						else
 						{
@@ -617,6 +631,34 @@ exports.handler = function (event, context)
 						else
 						{
 							app.import.prepare.source.accounts()
+						}
+					}	
+				},
+
+				switchBack: function (options, response)
+				{
+					if (_.isUndefined(response))
+					{
+						var data = 'switchback=1'
+
+						mydigitalstructure.send(
+						{
+							url: '/rpc/core/?method=CORE_SPACE_MANAGE'
+						},
+						data,
+						app.import.process.destination.switchBack);
+					}
+					else
+					{
+						var access = JSON.parse(response);
+
+						if (access.status == 'ER')
+						{
+							mydigitalstructure._util.testing.data(access, 'ER/app.import.process.destination.switchBack');
+						}
+						else
+						{
+							app.import.sync()
 						}
 					}	
 				},
@@ -774,7 +816,7 @@ exports.handler = function (event, context)
 
 						mydigitalstructure._util.testing.message(sourceAccount.accountName + ' / ' + _.size(app.import.process.data.destinationTransactions) + ' transaction(s)', 'app.import.process.destination.transactions::!DONE');
 
-						//app.import.process.source.accounts.sync();
+						app.import.process.source.accounts.sync();
 					}		
 				}
 			}
