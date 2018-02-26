@@ -1,9 +1,9 @@
 {	
-	"method": "user/accounts",
+	"method": "import/sync",
 	"action": "GET",
 	"user":
 	{
-      "logon": "myds-1",
+      "logon": "myds-12564",
       "locale": "en_US"
 	}
 }

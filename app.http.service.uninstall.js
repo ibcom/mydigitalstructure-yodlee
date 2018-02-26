@@ -12,16 +12,14 @@ var Service = require('node-windows').Service;
 
 var service = new Service(
 {
-	name: 'mydigitalstructure / Yodlee Proxy (1.0.1)',
-	description: 'Nodejs based mydigitalstructure/Yodlee proxy.',
-	script: 'C:\\lab\\mydigitalstructure-yodlee\\app.http-1.0.1.js'
+	name: 'mydigitalstructure / Yodlee Proxy',
+	script: 'C:\\lab\\mydigitalstructure-yodlee\\app-http-service.js'
 });
 
 /*
-service.on('install',function()
+service.on('uninstall',function()
 {
-	service.start();
 });
 */
 
-service.install();
+service.uninstall();

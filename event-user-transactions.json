@@ -1,5 +1,5 @@
 {	
-	"method": "user/accounts",
+	"method": "user/transactions",
 	"action": "GET",
 	"user":
 	{
