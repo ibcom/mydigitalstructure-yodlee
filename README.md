@@ -3,16 +3,15 @@ mydigitalstructure nodejs Connector for Yodlee
 
 Uses the mydigitalstructure nodejs SDK and the Yodlee SDK to get transactions from the bank and loaded into mydigitalstructure using http://docs.mydigitalstructure.com/FINANCIAL_BANK_ACCOUNT_TRANSACTION_MANAGE.
 
-Designed to run on node and AWS lambda
+Designed to run on node.
 
 See:
 http://docs.mydigitalstructure.com/gettingstarted_financial_transactions
 http://docs.mydigitalstructure.com/gettingstarted_nodejs
 
-Use:
-https://www.npmjs.com/package/aws-lambda-local
 
-`lambda-local -f app.js -c settings-private.json -t 300 -e event.json`
+`lambda-local -f c:\lab\mydigitalstructure-yodlee\app-1.0.4.js -t 9000 -c settings-private.json -e event-user-accounts.json`
+
 
 Import flow
 ===========
