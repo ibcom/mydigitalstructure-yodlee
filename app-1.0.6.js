@@ -4,7 +4,7 @@ Designed to run on node and AWS lambda
 mark.byers@ibcom.biz
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use: https://www.npmjs.com/package/aws-lambda-local
-$ lambda-local -f app-1.0.4.js -t 9000 -c settings-private.json -e event.json
+$ lambda-local -f app-1.0.6.js -t 9000 -c settings-private.json -e event.json
 */
 
 exports.handler = function (event, context)
@@ -87,6 +87,11 @@ exports.handler = function (event, context)
 		{
 			app.data.event.param.user.password = mydigitalstructure.data._settings.yodlee.defaults.password;
 			app.register.user(app.data.event);
+		}
+
+		if (app.data.event.method == 'admin/users')
+		{
+			app.import.prepare.destination.users(app.data.event);
 		}
 
 		if (app.data.event.method == 'user/accessTokens')
@@ -207,9 +212,23 @@ exports.handler = function (event, context)
 				app.user.data.accounts = response.data.account;
 				app._util.show.accounts({accounts: app.user.data.accounts});
 
-				var options = {accountIDs: _.map(app.user.data.accounts, 'id')}
-				app.user.transactions(options);
-				app.user.summary(options);
+				if (app.data.event.method == 'user/transactions')
+				{
+					var accounts = app.user.data.accounts;
+
+					if (app.data.event.accountNumber != undefined)
+					{
+						accounts = _.filter(accounts, function (a) {return (a.accountNumber == app.data.event.accountNumber)})
+					}
+					
+					options = _.assign(options, {accountIDs: _.map(accounts, 'id')})
+
+					mydigitalstructure._util.testing.data(app.data.event, 'app.user.accounts::event');
+					mydigitalstructure._util.testing.data(options, 'app.user.accounts::options');
+					
+					app.user.transactions(options);
+					app.user.summary(options);
+				}	
 			}
 		},
 
@@ -388,7 +407,7 @@ exports.handler = function (event, context)
 						};
 
 						mydigitalstructure.send(sendOptions,
-							'criteria={"fields":[{"name":"space"},{"name":"etag"}],"options":{"rows":1000}}',
+							'criteria={"fields":[{"name":"space"},{"name":"spacetext"},{"name":"etag"}],"options":{"rows":1000}}',
 							app.import.prepare.destination.users,
 							options);
 					}
@@ -423,7 +442,14 @@ exports.handler = function (event, context)
 							});
 						})
 
-						app.import.sync()
+						if (app.data.event.method == 'import/sync')
+						{
+							app.import.sync();
+						}
+						else if (app.data.event.method == 'admin/users')
+						{
+							mydigitalstructure._util.testing.data(app.import.data.users, 'app.import.prepare.users');
+						}
 					}
 				},
 
@@ -440,16 +466,28 @@ exports.handler = function (event, context)
 					}
 					else
 					{
-						app.import.data.destination.accounts = JSON.parse(response).data.rows;
-
-						_.each(app.import.data.destination.accounts, function (account)
+						if (JSON.parse(response).status == 'ER')
 						{
-							account._accountnumber = 'xxxx' + account.accountnumber.slice(-4);
-						})
+							//log error
+							mydigitalstructure._util.testing.message('ERROR!! (' + JSON.parse(response).error.errornotes + ')', 'app.import.prepare.accounts');
 
-						mydigitalstructure._util.testing.data(app.import.data.destination.accounts, 'app.import.prepare.destination.accounts::app.import.data.destination.accounts');
+							var user = _.find(app.import.data.users, function (user) {return user.logon == app.import.data.user.logon})
+							user.processed = true;
+							app.import.process.destination.switchBack({message: 'User: ' + app.import.data.user.logon + ': ' + JSON.parse(response).error.errornotes});
+						}
+						else
+						{
+							app.import.data.destination.accounts = JSON.parse(response).data.rows;
 
-						app.import.process.source.accounts.init()
+							_.each(app.import.data.destination.accounts, function (account)
+							{
+								account._accountnumber = 'xxxx' + account.accountnumber.slice(-4);
+							})
+
+							mydigitalstructure._util.testing.data(app.import.data.destination.accounts, 'app.import.prepare.destination.accounts::app.import.data.destination.accounts');
+
+							app.import.process.source.accounts.init()
+						}	
 					}
 				},
 
@@ -654,7 +692,8 @@ exports.handler = function (event, context)
 							url: '/rpc/core/?method=CORE_SPACE_MANAGE'
 						},
 						data,
-						app.import.process.destination.switchBack);
+						app.import.process.destination.switchBack,
+						options);
 					}
 					else
 					{
@@ -666,6 +705,20 @@ exports.handler = function (event, context)
 						}
 						else
 						{
+							if (options != undefined)
+							{
+								if (options.message != undefined)
+								{
+									var data = 'to=mark.byers@ibcom.biz&fromemail=support@ibcom.biz&subject=[Yodlee Import] ' + options.message
+
+									mydigitalstructure.send(
+									{
+										url: '/rpc/messaging/?method=MESSAGING_EMAIL_SEND'
+									},
+									data);
+								}
+							}
+
 							app.import.sync()
 						}
 					}	

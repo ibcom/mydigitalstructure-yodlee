@@ -4,7 +4,7 @@ Designed to run on node and AWS lambda
 mark.byers@ibcom.biz
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use: https://www.npmjs.com/package/aws-lambda-local
-$ lambda-local -f app-1.0.4.js -t 9000 -c settings-private.json -e event.json
+$ lambda-local -f app-1.0.5.js -t 9000 -c settings-private.json -e event.json
 */
 
 exports.handler = function (event, context)
@@ -207,9 +207,23 @@ exports.handler = function (event, context)
 				app.user.data.accounts = response.data.account;
 				app._util.show.accounts({accounts: app.user.data.accounts});
 
-				var options = {accountIDs: _.map(app.user.data.accounts, 'id')}
-				app.user.transactions(options);
-				app.user.summary(options);
+				if (app.data.event.method == 'user/transactions')
+				{
+					var accounts = app.user.data.accounts;
+
+					if (app.data.event.accountNumber != undefined)
+					{
+						accounts = _.filter(accounts, function (a) {return (a.accountNumber == app.data.event.accountNumber)})
+					}
+					
+					options = _.assign(options, {accountIDs: _.map(accounts, 'id')})
+
+					mydigitalstructure._util.testing.data(app.data.event, 'app.user.accounts::event');
+					mydigitalstructure._util.testing.data(options, 'app.user.accounts::options');
+					
+					app.user.transactions(options);
+					app.user.summary(options);
+				}	
 			}
 		},
 
