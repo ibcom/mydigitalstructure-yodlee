@@ -1,5 +1,5 @@
 {
-    "name": "exampleapp",
+    "name": "mydigitalstructure-yodlee",
     "version": "0.0.0",
     "licence": [
         {
@@ -7,19 +7,19 @@
             "url": "https://github.com/caolan/async/raw/master/LICENSE"
         }
     ],
-    "description": "node example",
+    "description": "node mydigitalstructure Yodlee",
     "preferGlobal": "true",
     "main": "app.js",
     "bin": {
         "mydigitalstructure": "mydigitalstructure.js"
     },
-    "author": "John Smith",
+    "author": "Mark Byers",
     "keywords": [
-        "Example App"
+        "mydigitalstructure, Yodlee"
     ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/example/example.git"
+        "url": "https://github.com/ibcom/mydigitalstructure-yodlee.git"
     },
     "dependencies": {
         "cron-parser": "0.7.0",
