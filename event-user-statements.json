@@ -3,7 +3,7 @@
 	"action": "GET",
 	"user":
 	{
-      "logon": "myds-1",
+      "logon": "myds-888",
       "locale": "en_US"
 	}
 }

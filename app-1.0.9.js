@@ -4,7 +4,7 @@ Designed to run on node and AWS lambda
 mark.byers@ibcom.biz
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use: https://www.npmjs.com/package/aws-lambda-local
-$ lambda-local -f app-1.0.8.js -t 9000 -c settings-private.json -e event.json
+$ lambda-local -f app-1.0.9.js -t 9000 -c settings-private.json -e event.json
 */
 
 exports.handler = function (event, context)
@@ -248,8 +248,8 @@ exports.handler = function (event, context)
 			{
 				mydigitalstructure._util.testing.data(response.data.statement, 'app.user.statements::response.data.statement');
 
-				//app.user.data.accounts = response.data.account;
-				//app._util.show.accounts({accounts: app.user.data.accounts});
+				app.user.data.statements = response.data.statement;
+				app._util.show.statements({statements: app.user.data.statements});
 			}
 		},
 
@@ -1016,6 +1016,56 @@ exports.handler = function (event, context)
 				console.log(_.join(showData, ', '));
 
 			});
+		},
+
+		statements: function (options)
+		{
+			var showData;
+			var showHeader =
+			[
+				{caption: 'ID', param: 'id'},
+				{caption: 'Account-ID', param: 'accountId'},
+				{caption: 'Statement-Date', param: 'statementDate'},
+				{caption: 'Statement-Due-Date', param: 'dueDate'},
+				{caption: 'Statement-Last-Updated', param: 'lastUpdated'},
+				{caption: 'Statement-Amount', parentParam: 'amountDue', param: 'amount'},
+			];
+
+			console.log(_.join(_.map(showHeader, 'caption'), ', '));
+
+			var statements = app.import.data.source.statements
+
+			if (!_.isUndefined(options))
+			{
+				if (!_.isUndefined(options.statements)) {statements = options.statements}
+			}
+
+			_.each(statements, function (data)
+			{
+				showData = [];
+				
+				_.each(showHeader, function (header)
+				{
+					if (_.isUndefined(header.parentParam))
+					{
+						showData.push(data[header.param])
+					}
+					else
+					{
+						if (_.isUndefined(data[header.parentParam]))
+						{
+							showData.push('-')
+						}
+						else
+						{
+							showData.push(data[header.parentParam][header.param])
+						}	
+					}
+				});
+
+				console.log(_.join(showData, ', '));
+
+			});
 		}
 	}	
 
@@ -1046,7 +1096,8 @@ exports.handler = function (event, context)
 						headers:
 						{
 							'Content-Type': 'application/json',
-							"Content-Length": Buffer.byteLength(_requestData)
+							"Content-Length": Buffer.byteLength(_requestData),
+							'Api-version': '1.1'
 						}
 					};
 
@@ -1155,7 +1206,8 @@ exports.handler = function (event, context)
 
 					var headers =
 					{
-						'Authorization': 'cobSession=' + app.data.yodlee.session.cobSession + userSession
+						'Authorization': 'cobSession=' + app.data.yodlee.session.cobSession + userSession,
+						'Api-version': '1.1'
 					}
 
 					var _requestData;
