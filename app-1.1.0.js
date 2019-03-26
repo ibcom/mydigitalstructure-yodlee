@@ -482,7 +482,7 @@ exports.handler = function (event, context)
 
 							_.each(app.import.data.destination.accounts, function (account)
 							{
-								account._accountnumber = 'xxx ' + account.accountnumber.slice(-4);
+								account._accountnumber = account.accountnumber.slice(-4);
 							})
 
 							mydigitalstructure._util.testing.data(app.import.data.destination.accounts, 'app.import.prepare.destination.accounts::app.import.data.destination.accounts');
@@ -612,7 +612,7 @@ exports.handler = function (event, context)
 
 							sourceAccount.destinationAccount = _.find(destinationAccounts, function(destinationAccount)
 							{
-								return sourceAccount.accountNumber == destinationAccount._accountnumber
+								return sourceAccount.accountNumber.slice(-4) == destinationAccount._accountnumber
 							});
 
 							if (_.isObject(sourceAccount.destinationAccount)) {sourceAccount.destinationAccountID = sourceAccount.destinationAccount.id} 
