@@ -4,7 +4,7 @@ Designed to run on node and AWS lambda
 mark.byers@ibcom.biz
 See: http://docs.mydigitalstructure.com/gettingstarted_nodejs
 Use: https://www.npmjs.com/package/aws-lambda-local
-$ lambda-local -f app-1.1.1.js -t 9000 -c settings-private.json -e event.json
+$ lambda-local -l index.js -t 9000 -c settings-private.json -e event.json
 */
 
 exports.handler = function (event, context)
